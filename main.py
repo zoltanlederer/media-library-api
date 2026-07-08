@@ -7,7 +7,13 @@ app = FastAPI()  # The main application instance — every route gets attached t
 
 
 @app.get('/media')
-def read_root():
+def get_media(
+    title: Optional[str] = None,
+    genre: Optional[str] = None,
+    year: Optional[int] = None,
+    actor: Optional[str] = None,
+    media_type: Optional[str] = None,
+    ):
     """Return all media items from the database as validated MediaItem objects."""
 
     # Open a fresh connection for this request (not shared/reused between requests)
@@ -17,8 +23,31 @@ def read_root():
     # instead of a plain unnamed tuple
     conn.row_factory = sqlite3.Row
 
+    condition = []
+    values = []
+
+    if title is not None:
+        condition.append('title LIKE ?')
+        values.append(f'%{title}%')
+    if genre is not None:
+        condition.append('genres LIKE ?')
+        values.append(f'%{genre}%')
+    if year is not None:
+        condition.append('year = ?')
+        values.append(year)
+    if actor is not None:
+        condition.append('"cast" LIKE ?')
+        values.append(f'%{actor}%')
+    if media_type is not None:
+        condition.append('"type" = ?')
+        values.append(media_type)
+
     cur = conn.cursor()
-    cur.execute('SELECT * FROM media')
+    if condition:
+        final_condition =  ' AND '.join(condition)
+        cur.execute(f"SELECT * FROM media WHERE {final_condition}", values)
+    else: 
+        cur.execute('SELECT * FROM media')
     data = cur.fetchall()
 
     # Convert each raw row into a validated MediaItem
