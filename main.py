@@ -1,4 +1,4 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 from typing import Optional
 import sqlite3
@@ -60,6 +60,25 @@ def get_media(
 
     return all_data
 
+
+@app.get('/media/{id}')
+def get_media_by_id(id: int):
+    """Return a single media item by its id, or 404 if it doesn't exist."""
+
+    conn = sqlite3.connect('./data/media.db')
+    conn.row_factory = sqlite3.Row
+    cur = conn.cursor()
+
+    # fetchone() since id is unique — there's at most one match
+    item = cur.execute('SELECT * FROM media WHERE id = ?', (id,)).fetchone()
+    conn.close()
+
+    # fetchone() returns None if no row matched — that's our "not found" signal
+    if item is None:
+        raise HTTPException(status_code=404, detail='Media item not found')
+
+    return MediaItem(**dict(item))
+    
 
 class MediaItem(BaseModel):
     """Defines the shape and validation rules for one row in the media table.
