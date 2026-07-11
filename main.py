@@ -181,3 +181,27 @@ def patch_media_by_id(id: int, updates: MediaItemUpdate):
     conn.close()  # close here, after the update, since this is the other exit path
 
     return {'message': 'Media item updated'}
+
+
+@app.delete('/media/{id}')
+def delete_by_id(id: int):
+    """Delete a single media item by its id, or 404 if it doesn't exist."""
+ 
+    conn = sqlite3.connect('./data/media.db')
+    cur = conn.cursor()
+ 
+    # Check existence first — DELETE never errors and never returns None,
+    # even if no row matches, so it can't be used on its own to detect "not found"
+    item = cur.execute('SELECT * FROM media WHERE id = ?', (id,)).fetchone()
+ 
+    if item is None:
+        conn.close()  # done with the connection either way — close before raising
+        raise HTTPException(status_code=404, detail='Media item not found')
+ 
+    # id is already confirmed valid from the SELECT above — reuse it directly,
+    # SQL statements are independent, so this still needs its own WHERE clause
+    cur.execute('DELETE FROM media WHERE id = ?', (id,))
+    conn.commit()
+    conn.close()
+ 
+    return {'message': 'Media item deleted'}
