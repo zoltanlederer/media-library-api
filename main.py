@@ -1,7 +1,14 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Header, Depends
 from pydantic import BaseModel
 from typing import Optional
+from dotenv import load_dotenv
+import os
 import sqlite3
+
+# Load variables from .env into the environment, then read the API key out.
+# The real key lives only in .env (gitignored) — never hardcoded here.
+load_dotenv()
+API_KEY = os.getenv("API_KEY")
 
 app = FastAPI()  # The main application instance — every route gets attached to this
 
@@ -62,6 +69,10 @@ class MediaItemUpdate(BaseModel):
 
 
 class MediaItemNew(BaseModel):
+    """Request body for creating a new media item. id is deliberately not
+    included — SQLite auto-assigns it, the client never provides one.
+    title, source, and type are required; everything else is optional.
+    """
     imdb_id: Optional[str] = None
     title: str
     year: Optional[int] = None
@@ -81,6 +92,19 @@ class MediaItemNew(BaseModel):
     directors: Optional[str] = None
     poster_path: Optional[str] = None
     cast: Optional[str] = None
+
+
+def verify_api_key(x_api_key: str = Header(...)):
+    """Dependency that guards write endpoints (POST/PATCH/DELETE).
+
+    FastAPI runs this before the route's own code. Header(...) reads the
+    X-API-Key header (FastAPI converts the hyphenated header name to this
+    underscored parameter name automatically). Raises 401 if it's missing
+    or wrong; otherwise the request is allowed through. GET endpoints don't
+    use this — reads stay public, only writes require the key.
+    """
+    if x_api_key != API_KEY:
+        raise HTTPException(status_code=401, detail='Invalid API key')
 
 
 @app.get('/media')
@@ -166,11 +190,13 @@ def get_media_by_id(id: int):
     return MediaItem(**dict(item))
 
 
-@app.patch('/media/{id}')
+# dependencies=[Depends(verify_api_key)] — runs verify_api_key before this
+# route's own code; write endpoints require a valid X-API-Key header
+@app.patch('/media/{id}', dependencies=[Depends(verify_api_key)])
 def patch_media_by_id(id: int, updates: MediaItemUpdate):
     """Partially update a media item — only fields present in the request
     body are changed; anything omitted is left untouched. 404 if the id
-    doesn't exist.
+    doesn't exist. Requires a valid API key (see verify_api_key).
     """
 
     conn = sqlite3.connect('./data/media.db')
@@ -205,34 +231,37 @@ def patch_media_by_id(id: int, updates: MediaItemUpdate):
     return {'message': 'Media item updated'}
 
 
-@app.delete('/media/{id}')
+@app.delete('/media/{id}', dependencies=[Depends(verify_api_key)])
 def delete_by_id(id: int):
-    """Delete a single media item by its id, or 404 if it doesn't exist."""
- 
+    """Delete a single media item by its id, or 404 if it doesn't exist.
+    Requires a valid API key (see verify_api_key).
+    """
+
     conn = sqlite3.connect('./data/media.db')
     cur = conn.cursor()
- 
+
     # Check existence first — DELETE never errors and never returns None,
     # even if no row matches, so it can't be used on its own to detect "not found"
     item = cur.execute('SELECT * FROM media WHERE id = ?', (id,)).fetchone()
- 
+
     if item is None:
         conn.close()  # done with the connection either way — close before raising
         raise HTTPException(status_code=404, detail='Media item not found')
- 
+
     # id is already confirmed valid from the SELECT above — reuse it directly,
     # SQL statements are independent, so this still needs its own WHERE clause
     cur.execute('DELETE FROM media WHERE id = ?', (id,))
     conn.commit()
     conn.close()
- 
+
     return {'message': 'Media item deleted'}
 
 
-@app.post('/media', status_code=201)
+@app.post('/media', status_code=201, dependencies=[Depends(verify_api_key)])
 def post_media(new_media: MediaItemNew):
     """Create a new media item. id is not accepted from the client —
     SQLite auto-assigns it, since it's not in the column list below.
+    Requires a valid API key (see verify_api_key).
     """
 
     conn = sqlite3.connect('./data/media.db')
@@ -253,4 +282,3 @@ def post_media(new_media: MediaItemNew):
     conn.close()
 
     return {"message": "Media item created", "id": new_item_id}
-    
