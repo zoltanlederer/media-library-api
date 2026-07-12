@@ -61,6 +61,28 @@ class MediaItemUpdate(BaseModel):
     cast: Optional[str] = None
 
 
+class MediaItemNew(BaseModel):
+    imdb_id: Optional[str] = None
+    title: str
+    year: Optional[int] = None
+    genres: Optional[str] = None
+    runtime_mins: Optional[int] = None
+    studio: Optional[str] = None
+    tagline: Optional[str] = None
+    description: Optional[str] = None
+    tmdb_id: Optional[int] = None
+    source: str
+    type: str
+    number_of_seasons: Optional[int] = None
+    number_of_episodes: Optional[int] = None
+    original_title: Optional[str] = None
+    imdb_rating: Optional[float] = None
+    release_date: Optional[str] = None
+    directors: Optional[str] = None
+    poster_path: Optional[str] = None
+    cast: Optional[str] = None
+
+
 @app.get('/media')
 def get_media(
     title: Optional[str] = None,
@@ -205,3 +227,30 @@ def delete_by_id(id: int):
     conn.close()
  
     return {'message': 'Media item deleted'}
+
+
+@app.post('/media', status_code=201)
+def post_media(new_media: MediaItemNew):
+    """Create a new media item. id is not accepted from the client —
+    SQLite auto-assigns it, since it's not in the column list below.
+    """
+
+    conn = sqlite3.connect('./data/media.db')
+    cur = conn.cursor()
+
+    # model_dump() (no exclude_unset here) — every field either has a real
+    # value or its default, since this is a full new record, not a partial update
+    new_items = new_media.model_dump()
+    values = list(new_items.values())
+
+    query = 'INSERT INTO media (imdb_id, title, year, genres, runtime_mins, studio, tagline, description, tmdb_id, source, type, number_of_seasons, number_of_episodes, original_title, imdb_rating, release_date, directors, poster_path, "cast") VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+    cur.execute(query, values)
+
+    # lastrowid — the id SQLite just auto-assigned to this new row
+    new_item_id = cur.lastrowid
+
+    conn.commit()
+    conn.close()
+
+    return {"message": "Media item created", "id": new_item_id}
+    
