@@ -10,6 +10,10 @@ import sqlite3
 load_dotenv()
 API_KEY = os.getenv("API_KEY")
 
+# No default — DB_PATH must be set explicitly in .env (see README).
+# Points at media.db locally, media.example.db when deployed.
+DB_PATH = os.getenv("DB_PATH")
+
 app = FastAPI()  # The main application instance — every route gets attached to this
 
 
@@ -123,7 +127,7 @@ def get_media(
     """
 
     # Open a fresh connection for this request (not shared/reused between requests)
-    conn = sqlite3.connect('./data/media.db')
+    conn = sqlite3.connect(DB_PATH)
 
     # row_factory makes each row behave like a dict (access by column name),
     # instead of a plain unnamed tuple
@@ -175,7 +179,7 @@ def get_media(
 def get_media_by_id(id: int):
     """Return a single media item by its id, or 404 if it doesn't exist."""
 
-    conn = sqlite3.connect('./data/media.db')
+    conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
     cur = conn.cursor()
 
@@ -199,7 +203,7 @@ def patch_media_by_id(id: int, updates: MediaItemUpdate):
     doesn't exist. Requires a valid API key (see verify_api_key).
     """
 
-    conn = sqlite3.connect('./data/media.db')
+    conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
     cur = conn.cursor()
     item = cur.execute('SELECT * FROM media WHERE id = ?', (id,)).fetchone()
@@ -237,7 +241,7 @@ def delete_by_id(id: int):
     Requires a valid API key (see verify_api_key).
     """
 
-    conn = sqlite3.connect('./data/media.db')
+    conn = sqlite3.connect(DB_PATH)
     cur = conn.cursor()
 
     # Check existence first — DELETE never errors and never returns None,
@@ -264,7 +268,7 @@ def post_media(new_media: MediaItemNew):
     Requires a valid API key (see verify_api_key).
     """
 
-    conn = sqlite3.connect('./data/media.db')
+    conn = sqlite3.connect(DB_PATH)
     cur = conn.cursor()
 
     # model_dump() (no exclude_unset here) — every field either has a real
