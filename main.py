@@ -16,6 +16,10 @@ DB_PATH = os.getenv("DB_PATH")
 
 app = FastAPI()  # The main application instance — every route gets attached to this
 
+@app.get('/')
+def root():
+    """Friendly landing message pointing visitors to the interactive docs."""
+    return {"message": "Media Library API — see /docs for interactive documentation"}
 
 class MediaItem(BaseModel):
     """Defines the shape and validation rules for one row in the media table.
