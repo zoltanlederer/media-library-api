@@ -2,8 +2,7 @@
 
 A FastAPI REST API for browsing and managing a personal movie/TV library, built on top of the SQLite database from [Project 7 (Media Library Browser)](https://zoltanlederer.com/blog/proj-07-media-library-browser.html). Wraps ~3,500 titles pulled from Plex, IMDB, and TMDB with full CRUD support, filtering, validation, and API key–protected write access.
 
-**Live demo:** https://media-library-api-i5uo.onrender.com  
-**Interactive docs (Swagger):** https://media-library-api-i5uo.onrender.com/docs
+**Live demo / Interactive docs (Swagger):** https://media-library-api-i5uo.onrender.com/docs
 
 > ⚠️ The live demo runs on Render's free tier. It spins down after 15 minutes of inactivity — the first request after a period of idle time can take 30–60 seconds to respond. It also uses a small 17-title sample database (`media.example.db`), not the full personal library.
 
