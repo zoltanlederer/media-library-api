@@ -271,6 +271,13 @@ def post_media(new_media: MediaItemNew):
     conn = sqlite3.connect(DB_PATH)
     cur = conn.cursor()
 
+    # Row cap — protects the public demo (API key is published in the README,
+    # so anyone can call this) from being flooded with junk data
+    count = cur.execute('SELECT COUNT(*) FROM media').fetchone()[0]
+    if count >= 50:
+        conn.close()
+        raise HTTPException(status_code=403, detail='Demo database is full — item limit reached')
+
     # model_dump() (no exclude_unset here) — every field either has a real
     # value or its default, since this is a full new record, not a partial update
     new_items = new_media.model_dump()
